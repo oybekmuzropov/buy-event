@@ -10,7 +10,7 @@ type Purchase struct {
 }
 
 type PurchaseStorageI interface {
-	Create(good *Purchase) error
+	Create(good *Purchase) (string, error)
 	Get(id uuid.UUID) (*Purchase, error)
 	GetAll() ([]*Purchase, error)
 	Delete(id uuid.UUID) error

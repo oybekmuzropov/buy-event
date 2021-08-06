@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/buy_event/config"
+	"github.com/buy_event/entities"
 	"github.com/buy_event/storage/repo"
 	"github.com/google/uuid"
 	"github.com/spf13/cobra"
@@ -18,8 +20,8 @@ var purchaseCmd = &cobra.Command{
 }
 
 var addPurchaseCmd = &cobra.Command{
-	Use: "add",
-	Short:"create a new purchase",
+	Use:   "add",
+	Short: "create a new purchase",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		userID, err := cmd.Flags().GetString("user-id")
 
@@ -56,17 +58,21 @@ var addPurchaseCmd = &cobra.Command{
 			goods = args
 		}
 
-		err = purchaseService.Create(context.Background(), &repo.Purchase{
-			Goods: strings.Join(goods, ","),
+		guid, err := purchaseService.Create(context.Background(), &repo.Purchase{
+			Goods:  strings.Join(goods, ","),
 			UserID: userUID,
-			Price:price,
+			Price:  price,
 		})
 
 		if err != nil {
 			return err
 		}
 
-		cmd.Println("purchase created successfully")
+		user, err := userService.Get(context.Background(), userUID)
+
+		if err != nil {
+			return err
+		}
 
 		messageType, err := cmd.Flags().GetString("message")
 
@@ -75,46 +81,34 @@ var addPurchaseCmd = &cobra.Command{
 		}
 
 		if !validateMessageType(messageType) {
-			_ = logService.Create(context.Background(), &repo.Log{
-				Error: fmt.Sprintf("message sending type not found. type: %s", messageType),
-			})
 			return errors.New("message type not found")
 		}
 
-		user, err := userService.Get(context.Background(), userUID)
+		cmd.Println("purchase created successfully")
 
+		notification := entities.Notification{
+			Type:        messageType,
+			Email:       user.Email,
+			PhoneNumber: user.PhoneNumber,
+			Text:        fmt.Sprintf("You bought %s goods and total price is %.2f", strings.Join(goods, ","), price),
+			PurchaseID:  guid,
+		}
+
+		value, err := json.Marshal(notification)
 		if err != nil {
 			return err
 		}
-		if messageType == config.MESSAGE_TYPE_SMS {
-			err = sendSMS(user.PhoneNumber, fmt.Sprintf("You bought %s goods and total price is %.2f", strings.Join(goods, ","), price))
-
-			if err != nil {
-				_ = logService.Create(context.Background(), &repo.Log{
-					Error: err.Error(),
-				})
-
-				return errors.New("notification did not send")
-			}
-			cmd.Println("notification successfully sent")
-		} else {
-			err = sendEmail(user.Email, fmt.Sprintf("You bought %s goods and total price is %.2f", strings.Join(goods, ","), price))
-
-			if err != nil {
-				_ = logService.Create(context.Background(), &repo.Log{
-					Error: err.Error(),
-				})
-
-				return errors.New("notification did not send")
-			}
-			cmd.Println("notification successfully sent")
+		err = notificationTopicPublisher.Publish("notification", value)
+		if err != nil {
+			return err
 		}
+
 		return nil
 	},
 }
 
 var getPurchaseCmd = &cobra.Command{
-	Use: "get",
+	Use:   "get",
 	Short: "Get a purchase",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id, err := cmd.Flags().GetString("id")
@@ -161,7 +155,7 @@ var getPurchaseCmd = &cobra.Command{
 }
 
 var deletePurchaseCmd = &cobra.Command{
-	Use: "delete",
+	Use:   "delete",
 	Short: "Delete purchase",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		id, err := cmd.Flags().GetString("id")
@@ -171,11 +165,11 @@ var deletePurchaseCmd = &cobra.Command{
 		}
 
 		if id == "" {
-			if len(args) == 0{
+			if len(args) == 0 {
 				return errors.New("purchase-id not found")
 			}
 
-			id =args[0]
+			id = args[0]
 		}
 		uid, err := uuid.Parse(id)
 
@@ -193,7 +187,6 @@ var deletePurchaseCmd = &cobra.Command{
 		return nil
 	},
 }
-
 
 func init() {
 	addPurchaseCmd.Flags().StringP("user-id", "u", "", "Enter user ID")

@@ -11,32 +11,32 @@ type purchaseRepo struct {
 }
 
 func NewPurchaseRepo(db *sqlx.DB) repo.PurchaseStorageI {
-	return &purchaseRepo{db:db}
+	return &purchaseRepo{db: db}
 }
 
-func (gr *purchaseRepo) Create(purchase *repo.Purchase) error {
+func (gr *purchaseRepo) Create(purchase *repo.Purchase) (string, error) {
 	//generate purchase id
-	id, err := uuid.NewRandom()
+	guid, err := uuid.NewRandom()
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	_, err = gr.db.Exec(`insert into purchases(id, user_id, goods, total_price) values ($1, $2, $3, $4)`,
-		id,
+		guid,
 		purchase.UserID,
 		purchase.Goods,
 		purchase.Price,
-		)
+	)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return guid.String(), nil
 }
 
-func (gr *purchaseRepo) Get(id uuid.UUID) (*repo.Purchase, error){
+func (gr *purchaseRepo) Get(id uuid.UUID) (*repo.Purchase, error) {
 	var purchase repo.Purchase
 
 	row := gr.db.QueryRow(`select id, goods, total_price, user_id from purchases where id=$1`, id)

@@ -13,17 +13,17 @@ type PurchaseService struct {
 }
 
 func NewPurchaseService(db *sqlx.DB) *PurchaseService {
-	return &PurchaseService{storage:storage.NewStoragePg(db)}
+	return &PurchaseService{storage: storage.NewStoragePg(db)}
 }
 
-func (ps *PurchaseService) Create(ctx context.Context, req *repo.Purchase) error {
-	err := ps.storage.Purchase().Create(req)
+func (ps *PurchaseService) Create(ctx context.Context, req *repo.Purchase) (string, error) {
+	guid, err := ps.storage.Purchase().Create(req)
 
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return guid, nil
 }
 
 func (ps *PurchaseService) Get(ctx context.Context, id uuid.UUID) (*repo.Purchase, error) {

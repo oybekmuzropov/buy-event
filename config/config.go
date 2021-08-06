@@ -7,6 +7,7 @@ import (
 
 type Config struct {
 	Environment string // develop, staging, production
+	LogLevel    string
 
 	PostgresHost     string
 	PostgresPort     int
@@ -15,28 +16,35 @@ type Config struct {
 	PostgresPassword string
 
 	//SMTP
-	SMTPKEY		string
+	SMTPKEY string
 
 	//Twilio Account information
-	AccountSID 		string
-	AuthToken		string
-	TwilioPhone		string
+	AccountSID  string
+	AuthToken   string
+	TwilioPhone string
+
+	KafkaHost string
+	KafkaPort int
 }
 
-const MESSAGE_TYPE_SMS = "sms"
-const MESSAGE_TYPE_EMAIL = "email"
-var MessageTypes = []string{MESSAGE_TYPE_SMS, MESSAGE_TYPE_EMAIL}
+const (
+	MessageTypeSms   = "sms"
+	MessageTypeEmail = "email"
+)
+
+var MessageTypes = []string{MessageTypeSms, MessageTypeEmail}
 
 func Load() Config {
 	c := Config{}
 
 	c.Environment = cast.ToString(getOrReturnDefaultValue("ENVIRONMENT", "develop"))
+	c.LogLevel = cast.ToString(getOrReturnDefaultValue("LOG_LEVEL", "debug"))
 
 	c.PostgresHost = cast.ToString(getOrReturnDefaultValue("POSTGRES_HOST", "localhost"))
 	c.PostgresPort = cast.ToInt(getOrReturnDefaultValue("POSTGRES_PORT", "5432"))
-	c.PostgresDatabase = cast.ToString(getOrReturnDefaultValue("POSTGRES_DATABASE", "event"))
-	c.PostgresUser = cast.ToString(getOrReturnDefaultValue("POSTGRES_USER", "event"))
-	c.PostgresPassword = cast.ToString(getOrReturnDefaultValue("POSTGRES_PASSWORD", "event123"))
+	c.PostgresDatabase = cast.ToString(getOrReturnDefaultValue("POSTGRES_DATABASE", "postgres"))
+	c.PostgresUser = cast.ToString(getOrReturnDefaultValue("POSTGRES_USER", "postgres"))
+	c.PostgresPassword = cast.ToString(getOrReturnDefaultValue("POSTGRES_PASSWORD", "postgres"))
 
 	c.SMTPKEY = cast.ToString(getOrReturnDefaultValue("SMTP_KEY", "key"))
 
@@ -45,6 +53,8 @@ func Load() Config {
 	c.AuthToken = cast.ToString(getOrReturnDefaultValue("AUTH_TOKEN", "token"))
 	c.TwilioPhone = cast.ToString(getOrReturnDefaultValue("TWILIO_PHONE", "phone"))
 
+	c.KafkaHost = cast.ToString(getOrReturnDefaultValue("KAFKA_HOST", "localhost"))
+	c.KafkaPort = cast.ToInt(getOrReturnDefaultValue("KAFKA_HOST", 9092))
 
 	return c
 }

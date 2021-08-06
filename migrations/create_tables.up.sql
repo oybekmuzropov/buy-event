@@ -13,5 +13,6 @@ create table if not exists purchases (
 
 create table if not exists logs (
     id uuid primary key ,
+    purchase_id uuid not null references purchases(id),
     error text not null
 )
